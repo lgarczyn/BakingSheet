@@ -18,8 +18,8 @@ namespace Cathei.BakingSheet.Internal
 
         public PropertyNodeObject(PropertyNode parent, string fullPath, Type valueType,
             GetterDelegate getter, SetterDelegate setter, PropertyInfo propertyInfo,
-            ISheetContractResolver resolver, int depth)
-            : base(parent, fullPath, valueType, getter, setter, propertyInfo)
+            ISheetContractResolver resolver, int depth, FieldInfo fieldInfo = null)
+            : base(parent, fullPath, valueType, getter, setter, propertyInfo, fieldInfo)
         {
             GenerateChildren(resolver, depth);
         }
@@ -102,6 +102,19 @@ namespace Cathei.BakingSheet.Internal
             child.PropertyInfo.SetValue(obj, value);
         }
 
+        internal static bool FieldValueGetter(PropertyNode child, object obj, object key, out object value)
+        {
+            Debug.Assert(child.FieldInfo != null);
+            value = child.FieldInfo.GetValue(obj);
+            return true;
+        }
+
+        private static void FieldValueSetter(PropertyNode child, object obj, object key, object value)
+        {
+            Debug.Assert(child.FieldInfo != null);
+            child.FieldInfo.SetValue(obj, value);
+        }
+
         private void GenerateChildren(ISheetContractResolver resolver, int depth)
         {
             ValueConverter = resolver.GetValueConverter(PropertyInfo) ??
@@ -126,6 +139,20 @@ namespace Cathei.BakingSheet.Internal
                     ValueGetter, ValueSetter, propertyInfo, resolver, depth);
 
                 _children.Add(propertyInfo.Name, child);
+            }
+
+            // Also reflect Unity-style serialized fields (public fields and [SerializeField] privates).
+            // Done after properties so a property with the same name wins the slot if both exist.
+            foreach (FieldInfo fieldInfo in Config.GetEligibleSerializedFields(ValueType))
+            {
+                if (_children.ContainsKey(fieldInfo.Name))
+                    continue;
+
+                var childPath = AppendPath(fieldInfo.Name);
+                var child = PropertyNode.Create(this, childPath, fieldInfo.FieldType,
+                    FieldValueGetter, FieldValueSetter, propertyInfo: null, resolver, depth, fieldInfo);
+
+                _children.Add(fieldInfo.Name, child);
             }
         }
     }

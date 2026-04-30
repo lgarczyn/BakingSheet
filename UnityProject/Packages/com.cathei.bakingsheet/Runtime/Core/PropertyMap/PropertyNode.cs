@@ -24,6 +24,12 @@ namespace Cathei.BakingSheet.Internal
         public SetterDelegate Setter { get; }
         public PropertyInfo PropertyInfo { get; }
 
+        // Field-backed nodes carry a FieldInfo here while PropertyInfo stays null. Consumers
+        // that need attribute lookup (verifiers, contract resolvers) should treat both as
+        // sources via Member when present.
+        public FieldInfo FieldInfo { get; }
+        public MemberInfo Member => (MemberInfo)PropertyInfo ?? FieldInfo;
+
         protected virtual bool IsLeaf => false;
         public virtual bool IsVertical => false;
         public abstract PropertyNode GetChild(string subpath);
@@ -38,7 +44,8 @@ namespace Cathei.BakingSheet.Internal
         public abstract IEnumerable<PropertyNode> TraverseChildren(List<object> indexes);
 
         protected PropertyNode(PropertyNode parent, string fullPath, Type valueType,
-            GetterDelegate getter, SetterDelegate setter, PropertyInfo propertyInfo)
+            GetterDelegate getter, SetterDelegate setter, PropertyInfo propertyInfo,
+            FieldInfo fieldInfo = null)
         {
             Parent = parent;
             FullPath = fullPath;
@@ -47,6 +54,7 @@ namespace Cathei.BakingSheet.Internal
             Getter = getter;
             Setter = setter;
             PropertyInfo = propertyInfo;
+            FieldInfo = fieldInfo;
         }
 
         protected virtual object GetChildIndex(int vindex, IEnumerator<object> indexer)
@@ -132,28 +140,28 @@ namespace Cathei.BakingSheet.Internal
         public static PropertyNode Create(
             PropertyNode parent, string fullPath, Type type,
             GetterDelegate getter, SetterDelegate setter, PropertyInfo propertyInfo,
-            ISheetContractResolver resolver, int depth)
+            ISheetContractResolver resolver, int depth, FieldInfo fieldInfo = null)
         {
             if (typeof(IVerticalList).IsAssignableFrom(type))
             {
                 return new PropertyNodeList(parent, fullPath, type,
-                    getter, setter, propertyInfo, resolver, depth, true);
+                    getter, setter, propertyInfo, resolver, depth, true, fieldInfo);
             }
 
             if (typeof(IList).IsAssignableFrom(type))
             {
                 return new PropertyNodeList(parent, fullPath, type,
-                    getter, setter, propertyInfo, resolver, depth, false);
+                    getter, setter, propertyInfo, resolver, depth, false, fieldInfo);
             }
 
             if (typeof(IDictionary).IsAssignableFrom(type))
             {
                 return new PropertyNodeDictionary(parent, fullPath, type,
-                    getter, setter, propertyInfo, resolver, depth);
+                    getter, setter, propertyInfo, resolver, depth, fieldInfo);
             }
 
             return new PropertyNodeObject(parent, fullPath, type,
-                    getter, setter, propertyInfo, resolver, depth);
+                    getter, setter, propertyInfo, resolver, depth, fieldInfo);
         }
     }
 }

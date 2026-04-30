@@ -21,8 +21,8 @@ namespace Cathei.BakingSheet.Internal
 
         public PropertyNodeList(PropertyNode parent, string fullPath, Type valueType,
             GetterDelegate getter, SetterDelegate setter, PropertyInfo propertyInfo,
-            ISheetContractResolver resolver, int depth, bool isVertical)
-            : base(parent, fullPath, valueType, getter, setter, propertyInfo)
+            ISheetContractResolver resolver, int depth, bool isVertical, FieldInfo fieldInfo = null)
+            : base(parent, fullPath, valueType, getter, setter, propertyInfo, fieldInfo)
         {
             _isVertical = isVertical;
             _child = GenerateChildren(resolver, depth);

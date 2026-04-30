@@ -56,6 +56,58 @@ namespace Cathei.BakingSheet.Internal
             }
         }
 
+        /// <summary>
+        /// Iterate fields that are eligible to be sheet columns. Mirrors Unity's serialization
+        /// rule: public instance fields, OR private/protected/internal fields decorated with an
+        /// attribute named "SerializeField" (any namespace — matched by attribute type name to
+        /// avoid taking a hard UnityEngine dependency in the .NET build).
+        ///
+        /// Skipped: static / const / literal / read-only fields, compiler-generated backing fields
+        /// for auto-properties, and anything marked with <see cref="NonSerializedAttribute"/>.
+        /// </summary>
+        public static IEnumerable<FieldInfo> GetEligibleSerializedFields(Type type)
+        {
+            const BindingFlags bindingFlags = BindingFlags.Public |
+                                              BindingFlags.NonPublic |
+                                              BindingFlags.Instance |
+                                              BindingFlags.DeclaredOnly;
+
+            while (type != null)
+            {
+                var fields = type.GetFields(bindingFlags);
+
+                foreach (var field in fields)
+                {
+                    if (field.IsStatic || field.IsLiteral || field.IsInitOnly)
+                        continue;
+
+                    // Skip auto-property backing fields (named "<PropName>k__BackingField").
+                    if (field.Name.Length > 0 && field.Name[0] == '<')
+                        continue;
+
+                    if (field.IsDefined(typeof(NonSerializedAttribute)))
+                        continue;
+
+                    if (!field.IsPublic && !HasSerializeFieldAttribute(field))
+                        continue;
+
+                    yield return field;
+                }
+
+                type = type.BaseType;
+            }
+        }
+
+        private static bool HasSerializeFieldAttribute(FieldInfo field)
+        {
+            foreach (var attr in field.GetCustomAttributes(inherit: false))
+            {
+                if (attr.GetType().Name == "SerializeField")
+                    return true;
+            }
+            return false;
+        }
+
         public static PropertyInfo GetRowArrayProperty(Type type)
         {
             while (type != null)

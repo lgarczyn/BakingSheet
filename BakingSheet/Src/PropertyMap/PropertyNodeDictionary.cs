@@ -23,8 +23,8 @@ namespace Cathei.BakingSheet.Internal
 
         public PropertyNodeDictionary(PropertyNode parent, string fullPath, Type valueType,
             GetterDelegate getter, SetterDelegate setter, PropertyInfo propertyInfo,
-            ISheetContractResolver resolver, int depth)
-            : base(parent, fullPath, valueType, getter, setter, propertyInfo)
+            ISheetContractResolver resolver, int depth, FieldInfo fieldInfo = null)
+            : base(parent, fullPath, valueType, getter, setter, propertyInfo, fieldInfo)
         {
             var arguments = PropertyMap.GetGenericArgument(ValueType, typeof(IDictionary<,>));
             var keyType = arguments[0];
