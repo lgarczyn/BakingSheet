@@ -80,7 +80,12 @@ namespace Cathei.BakingSheet.Internal
             _context = context;
 
             var resolver = context.Container.ContractResolver;
-            var rowType = GetGenericArgument(sheetType, typeof(Sheet<,>))[1];
+            // Look up via the ISheet<,> interface (rather than the Sheet<,> base class) so that
+            // any ISheet<TKey, TRow> implementation — including ones that don't inherit from Sheet<,>
+            // (e.g. types built on a custom collection base) — can construct a PropertyMap.
+            // GetGenericArgument already supports interface walking; Sheet<TKey, TValue> implements
+            // ISheet<TKey, TValue>, so existing concrete-Sheet users are unaffected.
+            var rowType = GetGenericArgument(sheetType, typeof(ISheet<,>))[1];
 
             Root = new PropertyNodeObject(null, null, rowType, RootGetter, null, null, resolver, 0);
 
