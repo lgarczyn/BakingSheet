@@ -115,6 +115,18 @@ namespace Cathei.BakingSheet.Internal
             child.FieldInfo.SetValue(obj, value);
         }
 
+        // Walks the inheritance chain looking for UnityEngine.Object by full name so the .NET
+        // build doesn't need a hard reference to UnityEngine. Cheap (string compare per base).
+        private static bool IsUnityObjectDerived(Type type)
+        {
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                if (t.FullName == "UnityEngine.Object")
+                    return true;
+            }
+            return false;
+        }
+
         private void GenerateChildren(ISheetContractResolver resolver, int depth)
         {
             ValueConverter = resolver.GetValueConverter(PropertyInfo) ??
@@ -127,6 +139,14 @@ namespace Cathei.BakingSheet.Internal
             _children = new Dictionary<string, PropertyNode>();
 
             bool isRoot = Parent == null;
+
+            // Stop descent at UnityEngine.Object boundaries (asset references). Without an
+            // explicit converter (handled by the ValueConverter check above), enumerating
+            // their members would surface engine-internal state and call native accessors
+            // (e.g. get_name) that NRE on destroyed / missing references. Root is exempt —
+            // the row type itself can legitimately derive from UnityEngine.Object.
+            if (!isRoot && IsUnityObjectDerived(ValueType))
+                return;
 
             foreach (PropertyInfo propertyInfo in Config.GetEligibleProperties(ValueType))
             {
