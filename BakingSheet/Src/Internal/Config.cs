@@ -48,6 +48,11 @@ namespace Cathei.BakingSheet.Internal
                     if (property.IsDefined(typeof(NonSerializedAttribute)))
                         continue;
 
+                    // Skip indexers ("Item" properties with index parameters); they need an index
+                    // arg to read/write and can't be addressed as a single column.
+                    if (property.GetIndexParameters().Length > 0)
+                        continue;
+
                     if (property.GetMethod != null && property.SetMethod != null)
                         yield return property;
                 }
