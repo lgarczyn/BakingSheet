@@ -30,6 +30,22 @@ namespace Cathei.BakingSheet.Internal
         public FieldInfo FieldInfo { get; }
         public MemberInfo Member => (MemberInfo)PropertyInfo ?? FieldInfo;
 
+        /// <summary>
+        /// Walk this node's ancestry (inclusive) and return true if any node already represents
+        /// the given type. Used as a cycle guard when generating children, to prevent runaway
+        /// reflective descent through types that reference each other (common with Unity asset
+        /// graphs: A holds a List&lt;B&gt;, B holds a Reference&lt;A&gt;, …).
+        /// </summary>
+        public bool IsTypeInAncestry(Type type)
+        {
+            for (var node = this; node != null; node = node.Parent)
+            {
+                if (node.ValueType == type)
+                    return true;
+            }
+            return false;
+        }
+
         protected virtual bool IsLeaf => false;
         public virtual bool IsVertical => false;
         public abstract PropertyNode GetChild(string subpath);

@@ -134,6 +134,10 @@ namespace Cathei.BakingSheet.Internal
                 if (isRoot && propertyInfo.Name == nameof(ISheetRowArray.Arr))
                     continue;
 
+                // Skip cycles — see PropertyNode.IsTypeInAncestry for details.
+                if (IsTypeInAncestry(propertyInfo.PropertyType))
+                    continue;
+
                 var childPath = AppendPath(propertyInfo.Name);
                 var child = PropertyNode.Create(this, childPath, propertyInfo.PropertyType,
                     ValueGetter, ValueSetter, propertyInfo, resolver, depth);
@@ -146,6 +150,9 @@ namespace Cathei.BakingSheet.Internal
             foreach (FieldInfo fieldInfo in Config.GetEligibleSerializedFields(ValueType))
             {
                 if (_children.ContainsKey(fieldInfo.Name))
+                    continue;
+
+                if (IsTypeInAncestry(fieldInfo.FieldType))
                     continue;
 
                 var childPath = AppendPath(fieldInfo.Name);
